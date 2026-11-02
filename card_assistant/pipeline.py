@@ -118,7 +118,7 @@ def generate_card(product: ProductInput, client: LLMClient, max_attempts: int = 
     too_general = is_mostly_unbacked(draft.seo_description, card.unbacked_phrases)
     if too_general:
         card.warnings.append(
-            "Больше половины предложений описания не опираются на входные данные: фактов мало, "
+            "Большинство предложений описания не опираются на входные данные: фактов мало, "
             "текст получился общим. Добавьте данные или перепишите текст."
         )
     if not issues and not pre.needs_review and not too_general:
