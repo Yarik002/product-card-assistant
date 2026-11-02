@@ -21,7 +21,9 @@ class InputError(Exception):
 
 
 def is_empty(value: str) -> bool:
-    return value.strip().lower() in EMPTY_VALUES
+    text = value.strip().lower()
+    # «???» и «###» тоже не данные: нет ни одной буквы или цифры
+    return text in EMPTY_VALUES or not any(ch.isalnum() for ch in text)
 
 
 class ProductInput(BaseModel):
@@ -158,5 +160,6 @@ class Card(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     issues: list[Issue] = Field(default_factory=list)
     traces: list[FactTrace] = Field(default_factory=list)
+    unbacked_phrases: list[str] = Field(default_factory=list)
     model: str = ""
     attempts: list[AttemptLog] = Field(default_factory=list)

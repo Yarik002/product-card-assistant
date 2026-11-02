@@ -118,6 +118,21 @@ def test_contradiction_is_shown_without_choosing_value(manometer):
     assert pre.needs_review
 
 
+def test_symbols_without_letters_or_digits_count_as_missing():
+    pre = run_precheck(ProductInput(name="Манометр", specs={"xxx": "???", "yyy": "###"}))
+    assert pre.product.specs == {}
+    assert pre.insufficient
+
+
+def test_conflicting_values_are_hidden_from_model(manometer):
+    manometer.description = "Манометр показывающий. Класс точности 2,5. Для избыточного давления."
+    pre = run_precheck(manometer)
+    assert "класс точности" not in pre.product.specs
+    assert "2,5" not in pre.product.description
+    assert "избыточного" in pre.product.description
+    assert not pre.index.number_known("1.5")
+
+
 def test_long_description_is_truncated_with_warning():
     product = ProductInput(name="Манометр", description="Предложение про прибор. " * 400)
     pre = run_precheck(product)

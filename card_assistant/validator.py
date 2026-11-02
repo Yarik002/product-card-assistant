@@ -29,11 +29,54 @@ UNCONFIRMED_TOPICS = {
     "тип корпуса": r"тип\w*\s+корпус",
 }
 EVALUATIVE = (
-    r"самы[йхем]|сам(?:ая|ое|ые|ого|ому)\b|лучш|надежн|высокоточн|точн(?:ый|ая|ое|ые|ых|ого|ому|ым)\b|"
-    r"высок\w+\s+точност|долговечн|качественн|премиальн|уникальн|идеальн|безупречн|"
-    r"непревзойд|превосход|исключительн|современн|эффективн|оптимальн|прочн|стабильн|"
-    r"передов|инновацион"
+    r"самы[йхем]|сам(?:ая|ое|ые|ого|ому)\b|лучш|надеж|высокоточн|"
+    r"точн(?:ый|ая|ое|ые|ых|ого|ому|ым)\b|высок\w+\s+точност|обеспеч\w+\s+точност|"
+    r"долговечн|качественн|премиальн|уникальн|идеальн|безупречн|непревзойд|превосход|"
+    r"исключительн|современн|эффективн|оптимальн|прочн|стабильн|передов|инновацион|"
+    r"удобн|прост\w*\s+в\s+(?:использ|эксплуат|монтаж|обслуж)"
 )
+
+# Слова, которые встречаются в любом тексте о приборе: опорой на вход они не считаются
+STOP_WORDS = {
+    "этот", "этого", "этой", "эти", "этих", "также", "может", "могут", "который", "которые",
+    "которая", "данный", "данная", "прибор", "прибора", "прибору", "приборы", "приборов",
+    "используется", "применяется", "является", "имеет", "обладает", "значение", "значения",
+    "характеристики", "характеристик", "характеристика",
+}  # fmt: skip
+SENTENCE_MIN_BACKED = 0.4
+COMMERCIAL_MIN_BACKED = 0.5
+
+
+def backed_ratio(text: str, index: InputIndex) -> float:
+    """Какая доля значимых слов текста встречается во входе. Это эвристика, а не понимание."""
+    words = [
+        word
+        for word in re.findall(r"[а-я]{4,}", normalize(text).lower())
+        if word not in STOP_WORDS
+    ]
+    if not words:
+        return 1.0
+    backed = sum(1 for word in words if word[: max(4, len(word) - 3)] in index.full_text)
+    return backed / len(words)
+
+
+def move_unbacked_commercial(draft: LLMDraft, index: InputIndex) -> None:
+    """Commercial-блок без опоры на вход код сам переводит в предположения."""
+    commercial = draft.commercial
+    for name in ("suitable_for", "tasks"):
+        kept = []
+        for item in getattr(commercial, name):
+            if backed_ratio(item, index) < COMMERCIAL_MIN_BACKED:
+                commercial.assumptions.append(item)
+            else:
+                kept.append(item)
+        setattr(commercial, name, kept)
+
+
+def unbacked_sentences(text: str, index: InputIndex) -> list[str]:
+    """Предложения, которые стоит прочитать внимательнее. На статус карточки не влияют."""
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [s for s in sentences if s and backed_ratio(s, index) < SENTENCE_MIN_BACKED]
 
 
 def _fields(draft: LLMDraft) -> list[tuple[str, str]]:
@@ -147,6 +190,9 @@ def _add_trace(traces: list[FactTrace], raw: str, field_name: str, located: Loca
 
 
 def _check_fact(fact, field_name, index, conflict_keys) -> tuple[Issue | None, Located | None]:
+    located = index.locate(fact)
+    if located:
+        return None, located
     if fact.key in conflict_keys:
         return (
             Issue(
@@ -157,9 +203,6 @@ def _check_fact(fact, field_name, index, conflict_keys) -> tuple[Issue | None, L
             ),
             None,
         )
-    located = index.locate(fact)
-    if located:
-        return None, located
     if fact.kind == "number" and index.number_known(fact.key):
         return (
             Issue(

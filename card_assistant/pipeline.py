@@ -10,7 +10,12 @@ from .llm import LLMClient, LLMError
 from .precheck import Precheck, run_precheck
 from .prompts import SYSTEM_PROMPT, build_retry_message, build_user_message
 from .schemas import AttemptLog, Card, FactTrace, Issue, LLMDraft, ProductInput
-from .validator import check_facts, check_structure
+from .validator import (
+    check_facts,
+    check_structure,
+    move_unbacked_commercial,
+    unbacked_sentences,
+)
 
 
 def parse_draft(content: str, finish_reason: str = "") -> LLMDraft | Issue:
@@ -43,7 +48,7 @@ def generate_card(product: ProductInput, client: LLMClient, max_attempts: int = 
     if pre.insufficient:
         return _base_card(pre, "insufficient_data", client.settings.model)
 
-    user_message = build_user_message(pre.product, pre.contradictions)
+    user_message = build_user_message(pre.product)
     previous_content = ""
     previous_issues: list[Issue] = []
     attempts: list[AttemptLog] = []
@@ -99,6 +104,8 @@ def generate_card(product: ProductInput, client: LLMClient, max_attempts: int = 
         return card
 
     draft, issues, traces = best
+    move_unbacked_commercial(draft, pre.index)
+    card.unbacked_phrases = unbacked_sentences(draft.seo_description, pre.index)
     card.seo_title = draft.seo_title
     card.seo_title_length = len(draft.seo_title)
     card.seo_description = draft.seo_description

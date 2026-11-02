@@ -25,6 +25,10 @@ def card_to_markdown(card: Card) -> str:
         lines.extend(f"- {warning}" for warning in card.warnings)
         lines.extend(f"- {issue.field}: {issue.message}" for issue in card.issues)
         lines.append("")
+    if card.unbacked_phrases:
+        lines.append("## Прочитайте внимательно: фразы со слабой опорой на входные данные")
+        lines.extend(f"- {phrase}" for phrase in card.unbacked_phrases)
+        lines.append("")
     if card.missing_fields:
         lines.append("## Не хватает данных")
         lines.extend(f"- {item.field}: {item.reason}" for item in card.missing_fields)

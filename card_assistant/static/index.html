@@ -163,6 +163,7 @@ function block(title, copyText, ...content) {
 }
 
 function list(items, itemClass = "") {
+  if (!items.length) return el("p", { class: "muted" }, "данных нет");
   return el("ul", {}, ...items.map((item) => el("li", { class: itemClass }, item)));
 }
 
@@ -186,6 +187,10 @@ function renderCard(card, markdown) {
   const problems = [...card.warnings, ...card.issues.map((i) => `${i.field}: ${i.message}`)];
   if (problems.length) {
     nodes.push(block(el("h2", {}, `Что проверить (${problems.length})`), null, list(problems)));
+  }
+  if (card.unbacked_phrases.length) {
+    nodes.push(block(el("h2", {}, `Прочитайте внимательно: слабая опора на вход (${card.unbacked_phrases.length})`),
+      null, list(card.unbacked_phrases)));
   }
   if (card.missing_fields.length) {
     const lines = card.missing_fields.map((m) => `${m.field}: ${m.reason}`);

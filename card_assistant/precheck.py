@@ -155,13 +155,6 @@ def run_precheck(product: ProductInput) -> Precheck:
         else:
             specs[key.strip()] = value.strip()
 
-    description, truncated = truncate_description(full_description)
-    if truncated:
-        warnings.append(
-            f"Описание длиннее {MAX_DESCRIPTION_CHARS} символов. Модель получила только начало "
-            f"({len(description)} из {len(full_description)}). Проверьте, что важное не потеряно."
-        )
-
     contradictions = find_contradictions(specs, full_description)
     conflicts = {item.key: item for item in contradictions}
     for item in contradictions:
@@ -169,6 +162,18 @@ def run_precheck(product: ProductInput) -> Precheck:
         warnings.append(
             f"Противоречие: в specs «{item.key}» = «{item.spec_value}», "
             f"а в описании «{item.description_fragment}». Значение не выбрано, уточните."
+        )
+
+    # Оба спорных значения прячем от модели: она не сможет выбрать одно из них сама
+    model_specs = {key: value for key, value in specs.items() if key not in conflicts}
+    model_description = _without_fragments(
+        full_description, [item.description_fragment for item in contradictions]
+    )
+    description, truncated = truncate_description(model_description)
+    if truncated:
+        warnings.append(
+            f"Описание длиннее {MAX_DESCRIPTION_CHARS} символов. Модель получила только начало "
+            f"({len(description)} из {len(model_description)}). Проверьте, что важное не потеряно."
         )
 
     characteristics = []
@@ -232,13 +237,13 @@ def run_precheck(product: ProductInput) -> Precheck:
         insufficient = True
 
     sources = {"name": name, "manufacturer": manufacturer}
-    for key, value in specs.items():
+    for key, value in model_specs.items():
         sources[f"specs.{key}"] = _spec_source_text(key, value)
     sources["description"] = description
 
     return Precheck(
         product=ProductInput(
-            name=name, manufacturer=manufacturer, specs=specs, description=description
+            name=name, manufacturer=manufacturer, specs=model_specs, description=description
         ),
         characteristics=characteristics,
         missing_fields=missing,
@@ -248,6 +253,14 @@ def run_precheck(product: ProductInput) -> Precheck:
         insufficient=insufficient,
         needs_review=review,
     )
+
+
+def _without_fragments(text: str, fragments: list[str]) -> str:
+    """Убирает предложения со спорными значениями."""
+    if not fragments:
+        return text
+    sentences = SENTENCE_SPLIT_RE.split(text)
+    return " ".join(s for s in sentences if not any(f in normalize(s) for f in fragments))
 
 
 def _spec_source_text(key: str, value: str) -> str:

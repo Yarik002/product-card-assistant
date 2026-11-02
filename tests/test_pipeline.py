@@ -1,4 +1,4 @@
-from conftest import FakeClient, good_draft
+from conftest import GOOD_SENTENCE, FakeClient, good_draft
 
 from card_assistant.llm import LLMError
 from card_assistant.pipeline import generate_card
@@ -132,17 +132,48 @@ def test_contradiction_goes_to_review_and_value_is_not_stated(manometer):
     card = generate_card(manometer, client)
     assert card.status == "needs_review"
     assert "conflicting_value" in codes(card)
-    assert "Значения полей" in client.calls[0][1]["content"]
+    # Модель не видит ни одного из спорных значений и не может выбрать сама
+    prompt = client.calls[0][1]["content"]
+    assert "2,5" not in prompt and "1,5" not in prompt
+
+
+def test_shared_number_is_not_conflict_if_it_has_another_source(manometer):
+    manometer.specs["длина"] = "1,5 м"
+    manometer.description = "Манометр, класс точности 2,5."
+    text = "Манометр показывающий DM 02 производства Манотомь, длина 1,5 м. " * 15
+    client = FakeClient(good_draft(seo_title="Манометр DM 02", seo_description=text))
+    card = generate_card(manometer, client)
+    assert "conflicting_value" not in {i.code for i in card.attempts[0].issues}
+
+
+def test_unbacked_commercial_item_is_moved_to_assumptions(manometer):
+    commercial = {
+        "suitable_for": ["Отделу закупок нефтеперерабатывающих заводов"],
+        "tasks": ["Измерение избыточного давления"],
+        "assumptions": [],
+    }
+    card = generate_card(manometer, FakeClient(good_draft(commercial=commercial)))
+    assert card.commercial.suitable_for == []
+    assert card.commercial.tasks == ["Измерение избыточного давления"]
+    assert card.commercial.assumptions == ["Отделу закупок нефтеперерабатывающих заводов"]
+
+
+def test_unbacked_sentence_is_listed_without_changing_status(manometer):
+    phrase = "Обеспечение безопасности персонала на опасных производственных площадках."
+    text = GOOD_SENTENCE * 7 + phrase
+    card = generate_card(manometer, FakeClient(good_draft(seo_description=text)))
+    assert card.status == "ready"
+    assert card.unbacked_phrases == [phrase]
 
 
 def test_contradiction_keeps_review_even_if_text_is_clean(manometer):
     manometer.specs = {"класс точности": "1,5"}
     manometer.description = "Манометр показывающий, класс точности 2,5."
-    text = "Манометр показывающий DM 02 производства Манотомь. " * 20
+    text = "Манометр показывающий DM 02 производства Манотомь. " * 18
     client = FakeClient(
         good_draft(
             seo_title="Манометр DM 02",
-            seo_description=text[:900],
+            seo_description=text,
             search_queries=["манометр DM 02", "манометр Манотомь", "манометр показывающий"],
         )
     )

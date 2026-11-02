@@ -104,6 +104,11 @@ def run_case(case: dict, client, max_attempts: int) -> dict:
     for forbidden in expect.get("must_not_contain", []):
         if forbidden.lower() in text or normalize(forbidden).lower() in normalize(text):
             result["leaks"].append(forbidden)
+    # Самое важное: запрещённая строка осталась в тексте, а валидатор о ней не сообщил
+    reported = normalize(" ".join(i.message for i in card.issues)).lower()
+    result["unreported_leaks"] = [
+        leak for leak in result["leaks"] if normalize(leak).lower() not in reported
+    ]
     return result
 
 
@@ -126,6 +131,7 @@ def summarize(results: list[dict]) -> dict:
         "caught_by_type": dict(caught),
         "other_issues": dict(other),
         "leaks_in_final_text": sum(len(item["leaks"]) for item in results),
+        "leaks_not_reported": sum(len(item.get("unreported_leaks", [])) for item in results),
         "final_cards_with_open_issues": sum(1 for item in results if item.get("final_issues")),
         "seconds_per_attempt": round(sum(seconds) / len(seconds), 1) if seconds else 0,
         "total_seconds": round(sum(item.get("seconds", 0) for item in results), 1),
@@ -149,7 +155,8 @@ def to_markdown(label: str, model: str, summary: dict, results: list[dict]) -> s
         f"| Выдумок поймал валидатор (по всем попыткам) | {summary['fabrications_caught']} |",
         f"| По типам | {summary['caught_by_type']} |",
         f"| Прочие ошибки (длина, JSON и др.) | {summary['other_issues']} |",
-        f"| Запрещённых строк в итоговых текстах | {summary['leaks_in_final_text']} |",
+        f"| Запрещённых строк в итоговых черновиках | {summary['leaks_in_final_text']} |",
+        f"| Из них валидатор не сообщил | {summary['leaks_not_reported']} |",
         f"| Секунд на попытку, в среднем | {summary['seconds_per_attempt']} |",
         f"| Всего секунд | {summary['total_seconds']} |",
         f"| Всего токенов | {summary['total_tokens']} |",
