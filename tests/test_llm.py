@@ -129,6 +129,7 @@ def test_cloud_without_key_gives_clear_error():
 
 def test_local_model_needs_no_key():
     Settings(base_url="http://localhost:11434/v1", model="m").check_ready()
+    Settings(base_url="http://host.docker.internal:11434/v1", model="m").check_ready()
 
 
 def test_bad_extra_body_gives_clear_error(monkeypatch):

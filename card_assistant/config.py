@@ -23,7 +23,10 @@ class Settings:
 
     @property
     def is_local(self) -> bool:
-        return "localhost" in self.base_url or "127.0.0.1" in self.base_url
+        # host.docker.internal: Ollama на этом компьютере, если сервис запущен в контейнере
+        return any(
+            host in self.base_url for host in ("localhost", "127.0.0.1", "host.docker.internal")
+        )
 
     def check_ready(self) -> None:
         if not self.is_local and not self.api_key:
