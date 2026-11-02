@@ -149,6 +149,18 @@ def check_structure(draft: LLMDraft) -> list[Issue]:
                 f"{DESCRIPTION_MAX}. Сократи минимум на {desc_len - DESCRIPTION_MAX}.",
             )
         )
+    repeated = _repeated_sentence(draft.seo_description)
+    if repeated:
+        # Модель добирала длину, повторяя абзац дословно: длина верная, текст плохой
+        issues.append(
+            Issue(
+                code="repeated_sentence",
+                field="SEO-описание",
+                value=repeated,
+                message=f"предложение повторяется дословно: «{repeated}». Убери повтор "
+                "и напиши вместо него новое пояснение без новых фактов.",
+            )
+        )
     count = len([q for q in draft.search_queries if q.strip()])
     if not QUERIES_MIN <= count <= QUERIES_MAX:
         issues.append(
@@ -167,6 +179,16 @@ def check_structure(draft: LLMDraft) -> list[Issue]:
             )
         )
     return issues
+
+
+def _repeated_sentence(text: str) -> str:
+    seen = set()
+    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+        key = normalize(sentence).lower()
+        if key and key in seen:
+            return sentence
+        seen.add(key)
+    return ""
 
 
 def check_facts(

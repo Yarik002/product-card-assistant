@@ -1,4 +1,4 @@
-from conftest import GOOD_SENTENCE, FakeClient, good_draft
+from conftest import GOOD_SENTENCE, FakeClient, good_draft, repeat
 
 from card_assistant.llm import LLMError
 from card_assistant.pipeline import generate_card
@@ -112,7 +112,7 @@ def test_accuracy_class_does_not_confirm_word_exact(manometer):
 
 def test_value_attached_to_wrong_parameter_is_caught():
     product = ProductInput(name="Термометр ТМ-5", specs={"длина капилляра, мм": "1 000"})
-    text = GOOD_SENTENCE.replace("DM 02", "ТМ-5") * 7
+    text = repeat(GOOD_SENTENCE.replace("DM 02", "ТМ-5"), 7)
     wrong = good_draft(seo_title="Термометр ТМ-5, диаметр капилляра 1 000 мм", seo_description=text)
     card = generate_card(product, FakeClient(*[wrong] * 3))
     assert "wrong_binding" in codes(card)
@@ -134,7 +134,7 @@ def test_invented_industry_and_conditions_are_caught(manometer):
 
 def test_temperature_itself_is_allowed_but_working_conditions_are_not():
     product = ProductInput(name="Термометр ТБ-1", specs={"диапазон измерения": "0–120 °С"})
-    text = "Термометр ТБ-1 предназначен для измерения температуры в диапазоне 0–120 °С. " * 12
+    text = repeat("Термометр ТБ-1 предназначен для измерения температуры в диапазоне 0–120 °С.", 12)
     fine = good_draft(seo_title="Термометр ТБ-1", seo_description=text, search_queries=["ТБ-1"] * 3)
     assert "unconfirmed_claim" not in codes(generate_card(product, FakeClient(*[fine] * 3)))
 
@@ -144,11 +144,38 @@ def test_temperature_itself_is_allowed_but_working_conditions_are_not():
 
 def test_text_of_general_words_is_not_ready(manometer):
     general = "Правильный подбор оборудования обеспечивает корректную работу сложного узла. "
-    text = GOOD_SENTENCE * 2 + general * 8
+    text = GOOD_SENTENCE + repeat(general, 10)
     card = generate_card(manometer, FakeClient(good_draft(seo_description=text)))
     assert card.issues == []
     assert card.status == "needs_review"
     assert any("общим" in warning for warning in card.warnings)
+
+
+def test_repeated_sentence_is_caught_even_with_correct_length(manometer):
+    # Настоящий случай: модель повторила абзац дословно, чтобы набрать 800 символов
+    paragraph = (
+        "Присоединение определяет, подойдёт ли прибор к имеющемуся штуцеру. "
+        "Диапазон измерений определяет значения давления, которые фиксирует прибор. "
+    )
+    text = GOOD_SENTENCE * 3 + paragraph * 3
+    assert 800 <= len(text) <= 1200
+    card = generate_card(manometer, FakeClient(*[good_draft(seo_description=text)] * 3))
+    assert "repeated_sentence" in codes(card)
+    assert card.status == "needs_review"
+
+
+def test_card_without_specs_is_not_ready():
+    # Настоящий случай: датчик без характеристик получил ready с текстом из общих фраз
+    product = ProductInput(
+        name="Манометр показывающий DM 02",
+        manufacturer="Манотомь",
+        description="Для измерения избыточного давления, диапазон измерений 0-1,6 МПа, "
+        "класс точности 1,5, присоединение G1/2.",
+    )
+    card = generate_card(product, FakeClient(good_draft()))
+    assert card.issues == []
+    assert card.status == "needs_review"
+    assert any("ни одной характеристики" in warning for warning in card.warnings)
 
 
 def test_saying_data_is_absent_in_text_is_caught(manometer):
@@ -160,7 +187,7 @@ def test_saying_data_is_absent_in_text_is_caught(manometer):
 def test_invented_brand_and_standard_are_caught(manometer):
     text = good_draft()["seo_description"]
     client = FakeClient(
-        *[good_draft(seo_description=text[:800] + " Аналог от Метран, по ГОСТ 2405-88.")] * 3
+        *[good_draft(seo_description=text + " Аналог от Метран, по ГОСТ 2405-88.")] * 3
     )
     card = generate_card(manometer, client)
     assert {"invented_name", "invented_standard"} <= codes(card)
@@ -191,10 +218,9 @@ def test_injection_cannot_bring_its_number_into_card(manometer):
 
 def test_contradiction_goes_to_review_and_value_is_not_stated(manometer):
     manometer.description = "Манометр, класс точности 2,5."
-    text = "Манометр показывающий DM 02 производства Манотомь. " * 20
+    text = repeat("Манометр показывающий DM 02 производства Манотомь.", 17)
     client = FakeClient(
-        *[good_draft(seo_title="Манометр DM 02, класс точности 2,5", seo_description=text[:900])]
-        * 3
+        *[good_draft(seo_title="Манометр DM 02, класс точности 2,5", seo_description=text)] * 3
     )
     card = generate_card(manometer, client)
     assert card.status == "needs_review"
@@ -207,7 +233,7 @@ def test_contradiction_goes_to_review_and_value_is_not_stated(manometer):
 def test_shared_number_is_not_conflict_if_it_has_another_source(manometer):
     manometer.specs["длина"] = "1,5 м"
     manometer.description = "Манометр, класс точности 2,5."
-    text = "Манометр показывающий DM 02 производства Манотомь, длина 1,5 м. " * 15
+    text = repeat("Манометр показывающий DM 02 производства Манотомь, длина 1,5 м.", 14)
     client = FakeClient(good_draft(seo_title="Манометр DM 02", seo_description=text))
     card = generate_card(manometer, client)
     assert "conflicting_value" not in {i.code for i in card.attempts[0].issues}
@@ -227,7 +253,7 @@ def test_unbacked_commercial_item_is_moved_to_assumptions(manometer):
 
 def test_unbacked_sentence_is_listed_without_changing_status(manometer):
     phrase = "Показания помогают сменному персоналу своевременно реагировать на отклонения режима."
-    text = GOOD_SENTENCE * 7 + phrase
+    text = repeat(GOOD_SENTENCE, 7) + " " + phrase
     card = generate_card(manometer, FakeClient(good_draft(seo_description=text)))
     assert card.status == "ready"
     assert card.unbacked_phrases == [phrase]
@@ -236,7 +262,7 @@ def test_unbacked_sentence_is_listed_without_changing_status(manometer):
 def test_contradiction_keeps_review_even_if_text_is_clean(manometer):
     manometer.specs = {"класс точности": "1,5"}
     manometer.description = "Манометр показывающий, класс точности 2,5."
-    text = "Манометр показывающий DM 02 производства Манотомь. " * 18
+    text = repeat("Манометр показывающий DM 02 производства Манотомь.", 17)
     client = FakeClient(
         good_draft(
             seo_title="Манометр DM 02",

@@ -202,7 +202,9 @@ class InputIndex:
         )
 
     def has_stem(self, word: str) -> bool:
-        return word_stem(normalize(word)) in self.full_text
+        # Только с начала слова: основа «метр» от «Метран» есть внутри слова «диаметр»
+        stem = re.escape(word_stem(normalize(word)))
+        return re.search(rf"(?<![а-яa-z]){stem}", self.full_text) is not None
 
     def _in_codes(self, fact: Fact) -> bool:
         return any(

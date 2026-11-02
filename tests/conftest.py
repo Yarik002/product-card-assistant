@@ -26,10 +26,16 @@ GOOD_SENTENCE = (
 )
 
 
+def repeat(sentence: str, times: int) -> str:
+    """Длинный текст без дословных повторов: валидатор ловит одинаковые предложения."""
+    body = sentence.strip().rstrip(".")
+    return " ".join(f"{body} а{letter}." for letter in "бвгдежзиклмнопрстуфхцчшщ"[:times])
+
+
 def good_draft(**overrides) -> dict:
     draft = {
         "seo_title": "Манометр показывающий DM 02 Манотомь, 0-1,6 МПа",
-        "seo_description": (GOOD_SENTENCE * 7)[:1000],
+        "seo_description": repeat(GOOD_SENTENCE, 7),
         "search_queries": ["манометр DM 02", "манометр G1/2", "манометр 1,6 МПа"],
         "commercial": {
             "suitable_for": ["Тем, кому нужно измерять избыточное давление"],

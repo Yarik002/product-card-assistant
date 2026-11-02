@@ -121,7 +121,12 @@ def generate_card(product: ProductInput, client: LLMClient, max_attempts: int = 
             "Большинство предложений описания не опираются на входные данные: фактов мало, "
             "текст получился общим. Добавьте данные или перепишите текст."
         )
-    if not issues and not pre.needs_review and not too_general:
+    no_specs = not pre.product.specs
+    if no_specs:
+        card.warnings.append(
+            "Нет ни одной характеристики: текст не может опираться на значения. Добавьте данные."
+        )
+    if not issues and not pre.needs_review and not too_general and not no_specs:
         card.status = "ready"
     return card
 
