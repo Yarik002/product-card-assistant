@@ -132,6 +132,16 @@ def test_invented_industry_and_conditions_are_caught(manometer):
     assert {"нефтян", "вибрац"} <= values
 
 
+def test_temperature_itself_is_allowed_but_working_conditions_are_not():
+    product = ProductInput(name="Термометр ТБ-1", specs={"диапазон измерения": "0–120 °С"})
+    text = "Термометр ТБ-1 предназначен для измерения температуры в диапазоне 0–120 °С. " * 12
+    fine = good_draft(seo_title="Термометр ТБ-1", seo_description=text, search_queries=["ТБ-1"] * 3)
+    assert "unconfirmed_claim" not in codes(generate_card(product, FakeClient(*[fine] * 3)))
+
+    bad = {**fine, "seo_title": "Термометр ТБ-1 для работы при повышенной температуре"}
+    assert "unconfirmed_claim" in codes(generate_card(product, FakeClient(*[bad] * 3)))
+
+
 def test_saying_data_is_absent_in_text_is_caught(manometer):
     title = "Манометр DM 02, производитель не указан"
     card = generate_card(manometer, FakeClient(*[good_draft(seo_title=title)] * 3))
