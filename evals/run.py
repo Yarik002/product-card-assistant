@@ -8,6 +8,7 @@
 
 import argparse
 import json
+import re
 import sys
 import time
 from collections import Counter
@@ -102,9 +103,10 @@ def run_case(case: dict, client, max_attempts: int) -> dict:
             result["failures"].append(f"нет предупреждения: {text}")
 
     # Независимая проверка: не через валидатор, а поиском запрещённой строки в итоговом тексте
-    text = generated_text(card).lower()
+    text = normalize(generated_text(card)).lower()
     for forbidden in expect.get("must_not_contain", []):
-        if forbidden.lower() in text or normalize(forbidden).lower() in normalize(text):
+        # Только с начала слова: «бар» не должен находиться внутри слова «габаритные»
+        if re.search(rf"(?<![а-яa-z]){re.escape(normalize(forbidden).lower())}", text):
             result["leaks"].append(forbidden)
     # Самое важное: запрещённая строка осталась в тексте, а валидатор о ней не сообщил
     reported = normalize(" ".join(i.message for i in card.issues)).lower()

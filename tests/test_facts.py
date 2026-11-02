@@ -29,6 +29,26 @@ def test_spaces_in_big_numbers():
     assert number_units("10 000 Па") == [("10000", "па")]
 
 
+def test_neighbouring_values_are_not_glued_into_big_number():
+    # Модель пишет «G1/2 100 мм», а правило про пробелы в числах делало из этого G1/2100
+    assert keys("G1/2 100 мм", "code") == ["g1/2"]
+    assert number_units("G1/2 100 мм") == [("100", "мм")]
+    assert number_units("М20 100 мм") == [("100", "мм")]
+
+
+def test_lowercase_code_in_search_query_is_found():
+    # Ложная ошибка заставила модель убрать правильную марку: «ТМ-5» стал «ТМ»
+    index = InputIndex({"name": "Термометр ТМ-5", "x": "М20х1,5", "y": "Манометр DM 02"})
+    for text in ("тм-5", "м20х1,5", "dm 02"):
+        facts = extract_facts(normalize(text))
+        assert facts and all(index.locate(fact) for fact in facts), text
+
+
+def test_lowercase_word_before_number_is_not_a_code():
+    assert number_units("до 5 МПа") == [("5", "мпа")]
+    assert number_units("при 100 мм") == [("100", "мм")]
+
+
 def test_minus_is_sign_only_outside_range():
     assert number_units("от -40 до +60 °С") == [("-40", "°c"), ("60", "°c")]
     assert number_units("−40…+60 ºC") == [("-40", "°c"), ("60", "°c")]

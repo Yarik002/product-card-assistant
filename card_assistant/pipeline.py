@@ -13,6 +13,7 @@ from .schemas import AttemptLog, Card, FactTrace, Issue, LLMDraft, ProductInput
 from .validator import (
     check_facts,
     check_structure,
+    is_mostly_unbacked,
     move_unbacked_commercial,
     unbacked_sentences,
 )
@@ -114,7 +115,13 @@ def generate_card(product: ProductInput, client: LLMClient, max_attempts: int = 
     card.commercial = draft.commercial
     card.issues = issues
     card.traces = traces
-    if not issues and not pre.needs_review:
+    too_general = is_mostly_unbacked(draft.seo_description, card.unbacked_phrases)
+    if too_general:
+        card.warnings.append(
+            "Больше половины предложений описания не опираются на входные данные: фактов мало, "
+            "текст получился общим. Добавьте данные или перепишите текст."
+        )
+    if not issues and not pre.needs_review and not too_general:
         card.status = "ready"
     return card
 

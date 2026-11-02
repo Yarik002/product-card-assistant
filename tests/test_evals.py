@@ -23,6 +23,12 @@ def test_leak_is_found_even_if_validator_passed():
     assert result["leaks"] == ["DM 02"]
 
 
+def test_forbidden_string_is_searched_from_word_start():
+    # «бар» находился внутри слова «габаритные», а «МПа» внутри «компанией»
+    client = FakeClient(*[good_draft(seo_title="Манометр DM 02, габаритные размеры")] * 3)
+    assert run_case(case(must_not_contain=["бар"]), client, 3)["leaks"] == []
+
+
 def test_caught_fabrications_are_counted_over_attempts():
     bad = good_draft(seo_title="Манометр DM 02 на 2,5 МПа")
     result = run_case(case(status=["ready"]), FakeClient(bad, good_draft()), 3)

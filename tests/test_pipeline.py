@@ -142,6 +142,15 @@ def test_temperature_itself_is_allowed_but_working_conditions_are_not():
     assert "unconfirmed_claim" in codes(generate_card(product, FakeClient(*[bad] * 3)))
 
 
+def test_text_of_general_words_is_not_ready(manometer):
+    general = "Правильный подбор оборудования обеспечивает корректную работу сложного узла. "
+    text = GOOD_SENTENCE * 2 + general * 8
+    card = generate_card(manometer, FakeClient(good_draft(seo_description=text)))
+    assert card.issues == []
+    assert card.status == "needs_review"
+    assert any("общим" in warning for warning in card.warnings)
+
+
 def test_saying_data_is_absent_in_text_is_caught(manometer):
     title = "Манометр DM 02, производитель не указан"
     card = generate_card(manometer, FakeClient(*[good_draft(seo_title=title)] * 3))

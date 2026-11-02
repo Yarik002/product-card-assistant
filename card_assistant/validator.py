@@ -56,6 +56,7 @@ STOP_WORDS = {
 }  # fmt: skip
 SENTENCE_MIN_BACKED = 0.4
 COMMERCIAL_MIN_BACKED = 0.5
+MAX_UNBACKED_SHARE = 0.5
 
 # Параметры, которые легко перепутать. Модель написала «диаметр капилляра 1 000 мм»
 # при входе «длина капилляра 1 000 мм»: число есть во входе, но приписано другому параметру
@@ -92,9 +93,15 @@ def move_unbacked_commercial(draft: LLMDraft, index: InputIndex) -> None:
 
 
 def unbacked_sentences(text: str, index: InputIndex) -> list[str]:
-    """Предложения, которые стоит прочитать внимательнее. На статус карточки не влияют."""
+    """Предложения, которые стоит прочитать внимательнее."""
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     return [s for s in sentences if s and backed_ratio(s, index) < SENTENCE_MIN_BACKED]
+
+
+def is_mostly_unbacked(text: str, unbacked: list[str]) -> bool:
+    """Выдумок может не быть, но текст из общих слов нельзя считать готовым."""
+    total = len(re.split(r"(?<=[.!?])\s+", text.strip()))
+    return len(unbacked) > total * MAX_UNBACKED_SHARE
 
 
 def _fields(draft: LLMDraft) -> list[tuple[str, str]]:
@@ -129,7 +136,8 @@ def check_structure(draft: LLMDraft) -> list[Issue]:
                 field="SEO-описание",
                 message=f"сейчас {desc_len} символов, нужно от {DESCRIPTION_MIN} до "
                 f"{DESCRIPTION_MAX}. Добавь минимум {DESCRIPTION_MIN - desc_len} символов "
-                "без новых фактов.",
+                "без новых фактов: в последнем абзаце добавь по предложению к каждой "
+                "характеристике.",
             )
         )
     elif desc_len > DESCRIPTION_MAX:
