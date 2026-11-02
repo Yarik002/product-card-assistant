@@ -24,10 +24,11 @@ def parse_draft(content: str, finish_reason: str = "") -> LLMDraft | Issue:
     if finish_reason == "length":
         return _json_issue("ответ оборвался на лимите токенов. Пиши короче.")
     text = content.strip()
-    # Маленькие модели любят оборачивать JSON в ```json
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
     if not text:
         return _json_issue("ответ пустой. Верни объект JSON.")
+    # Модели любят оборачивать JSON в ```json или писать «Вот ответ:» перед ним
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    text = match.group() if match else text
     try:
         data = json.loads(text)
     except json.JSONDecodeError:

@@ -20,6 +20,13 @@ def test_specs_of_wrong_type_is_rejected():
         parse_product('{"name": "Манометр", "specs": ["0-1 МПа"]}')
 
 
+def test_too_long_name_and_specs_are_rejected():
+    with pytest.raises(InputError, match="Название"):
+        parse_product('{"name": "' + "м" * 301 + '"}')
+    with pytest.raises(InputError, match="specs"):
+        parse_product('{"name": "Манометр", "specs": {"поле": "' + "з" * 4000 + '"}}')
+
+
 def test_numbers_and_bom_are_accepted():
     product = parse_product('﻿{"name": "Манометр", "specs": {"класс точности": 1.5}}')
     assert product.specs["класс точности"] == "1.5"

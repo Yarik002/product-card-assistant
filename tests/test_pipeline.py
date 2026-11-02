@@ -299,6 +299,13 @@ def test_markdown_fence_is_accepted(manometer):
     assert generate_card(manometer, FakeClient(fenced)).status == "ready"
 
 
+def test_text_around_json_is_accepted(manometer):
+    import json
+
+    wrapped = "Вот ответ: " + json.dumps(good_draft(), ensure_ascii=False) + " Готово!"
+    assert generate_card(manometer, FakeClient(wrapped)).status == "ready"
+
+
 def test_insufficient_data_does_not_call_model():
     client = FakeClient()
     card = generate_card(ProductInput(name="", description=""), client)

@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 MISSING = "данных нет"
 QUERIES_NOTE = "Гипотезы модели. Частотность по Wordstat не проверялась."
 MAX_INPUT_BYTES = 1_000_000
+MAX_NAME_CHARS = 300
+MAX_SPECS_CHARS = 4000
 
 # Такие значения считаем отсутствующими: контент-менеджеры часто ставят прочерк
 EMPTY_VALUES = {
@@ -83,13 +85,30 @@ def parse_product(raw: str | bytes) -> ProductInput:
             "Ожидается один товар: JSON-объект с полями name, manufacturer, specs, description."
         )
     try:
-        return ProductInput.model_validate(data)
+        product = ProductInput.model_validate(data)
     except ValidationError as exc:
         problems = "; ".join(
             f"{'.'.join(str(p) for p in err['loc'])}: {err['msg'].removeprefix('Value error, ')}"
             for err in exc.errors()
         )
         raise InputError(f"Неверный формат полей. {problems}.") from exc
+    _check_lengths(product)
+    return product
+
+
+def _check_lengths(product: ProductInput) -> None:
+    """Описание обрезается с предупреждением, а длинное название или specs это ошибка во входе:
+    такой текст раздул бы запрос к модели."""
+    if len(product.name) > MAX_NAME_CHARS or len(product.manufacturer) > MAX_NAME_CHARS:
+        raise InputError(
+            f"Название и производитель должны быть короче {MAX_NAME_CHARS} символов. "
+            "Текст паспорта поместите в description."
+        )
+    specs_length = sum(len(key) + len(value) for key, value in product.specs.items())
+    if specs_length > MAX_SPECS_CHARS:
+        raise InputError(
+            f"В specs больше {MAX_SPECS_CHARS} символов. Текст паспорта поместите в description."
+        )
 
 
 class CommercialBlock(BaseModel):

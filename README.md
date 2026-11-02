@@ -14,7 +14,7 @@
 
 ## Запуск на Windows
 
-Нужен Python 3.11, на нём всё проверено.
+Нужен Python 3.11 или новее. Проверено на 3.11 и 3.14: если у вас другая версия, в команде ниже укажите её.
 
 ```bash
 git clone https://github.com/Yarik002/product-card-assistant.git

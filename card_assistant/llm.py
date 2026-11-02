@@ -104,7 +104,11 @@ class LLMClient:
             raise _Retryable(
                 LLMError(f"Сервис модели временно недоступен (ошибка {status}).", "server")
             )
-        raise LLMError(f"Сервис модели отклонил запрос (ошибка {status}).", "bad_request")
+        raise LLMError(
+            f"Сервис модели отклонил запрос (ошибка {status}). "
+            "Проверьте LLM_MODEL и LLM_EXTRA_BODY.",
+            "bad_request",
+        )
 
     @staticmethod
     def _parse(response: httpx.Response) -> LLMReply:
