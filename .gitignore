@@ -1,0 +1,13 @@
+# Секреты: в репозитории только .env.example
+.env
+.env.*
+!.env.example
+
+.claude/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
