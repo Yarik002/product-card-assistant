@@ -110,6 +110,34 @@ def test_accuracy_class_does_not_confirm_word_exact(manometer):
     assert "evaluative_claim" in codes(generate_card(manometer, client))
 
 
+def test_value_attached_to_wrong_parameter_is_caught():
+    product = ProductInput(name="Термометр ТМ-5", specs={"длина капилляра, мм": "1 000"})
+    text = GOOD_SENTENCE.replace("DM 02", "ТМ-5") * 7
+    wrong = good_draft(seo_title="Термометр ТМ-5, диаметр капилляра 1 000 мм", seo_description=text)
+    card = generate_card(product, FakeClient(*[wrong] * 3))
+    assert "wrong_binding" in codes(card)
+
+
+def test_value_with_its_own_parameter_is_not_flagged(manometer):
+    title = "Манометр DM 02, диаметр корпуса 100 мм"
+    card = generate_card(manometer, FakeClient(good_draft(seo_title=title)))
+    assert "wrong_binding" not in codes(card)
+    assert card.status == "ready"
+
+
+def test_invented_industry_and_conditions_are_caught(manometer):
+    title = "Манометр DM 02 для нефтяной отрасли, вибрация"
+    card = generate_card(manometer, FakeClient(*[good_draft(seo_title=title)] * 3))
+    values = {issue.value for issue in card.issues if issue.code == "unconfirmed_claim"}
+    assert {"нефтян", "вибрац"} <= values
+
+
+def test_saying_data_is_absent_in_text_is_caught(manometer):
+    title = "Манометр DM 02, производитель не указан"
+    card = generate_card(manometer, FakeClient(*[good_draft(seo_title=title)] * 3))
+    assert "placeholder" in codes(card)
+
+
 def test_invented_brand_and_standard_are_caught(manometer):
     text = good_draft()["seo_description"]
     client = FakeClient(
@@ -179,7 +207,7 @@ def test_unbacked_commercial_item_is_moved_to_assumptions(manometer):
 
 
 def test_unbacked_sentence_is_listed_without_changing_status(manometer):
-    phrase = "Обеспечение безопасности персонала на опасных производственных площадках."
+    phrase = "Показания помогают сменному персоналу своевременно реагировать на отклонения режима."
     text = GOOD_SENTENCE * 7 + phrase
     card = generate_card(manometer, FakeClient(good_draft(seo_description=text)))
     assert card.status == "ready"

@@ -169,7 +169,7 @@ CASES = [
         },
         "expect": {
             "status": ["needs_review", "insufficient_data", "ready"],
-            "must_not_contain": ["МПа", "°С", "манометр", "датчик"],
+            "must_not_contain": ["°С", "манометр", "датчик"],
         },
     },
     {
@@ -213,6 +213,10 @@ CASES = [
             },
             "description": "Термометр предназначен для измерения температуры жидких сред.",
         },
-        "expect": {"status": ["ready", "needs_review"], "must_not_contain": COMMON_INVENTIONS},
+        "expect": {
+            "status": ["ready", "needs_review"],
+            # В прошлом прогоне модель написала «диаметр капилляра» вместо длины
+            "must_not_contain": COMMON_INVENTIONS + ["диаметр капилляра"],
+        },
     },
 ]

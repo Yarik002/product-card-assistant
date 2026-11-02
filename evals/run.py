@@ -30,6 +30,7 @@ FABRICATION_CODES = {
     "invented_code",
     "invented_standard",
     "invented_name",
+    "wrong_binding",
     "conflicting_value",
     "unconfirmed_claim",
     "evaluative_claim",

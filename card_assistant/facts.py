@@ -35,6 +35,8 @@ RANGE_GAP_RE = re.compile(r"^\s*(?:-|\.\.\.|до|÷|,|и|/)?\s*[+-]?$")
 
 # Аббревиатуры, которые не являются характеристиками
 ALLOWED_ABBR = {"кип", "кипиа"}
+# «градусов Цельсия» это запись единицы, а не название компании
+ALLOWED_NAMES = {"цельсия"}
 # Кириллица, похожая на латиницу: «М20х1,5» и «M20x1.5» это одно и то же
 LOOKALIKE = str.maketrans("авекмнорстух", "abekmhopctyx")
 
@@ -152,7 +154,7 @@ def proper_names(text: str) -> list[str]:
     """Слова с большой буквы внутри предложения и названия в кавычках."""
     names = PROPER_RE.findall(text)
     names.extend(quoted.split()[0] for quoted in QUOTED_RE.findall(text))
-    return names
+    return [name for name in names if name.lower() not in ALLOWED_NAMES]
 
 
 @dataclass(frozen=True)
@@ -181,6 +183,14 @@ class InputIndex:
         if fact.kind in ("latin", "code", "abbr") and self._in_codes(fact):
             return self._first_source_with(fact)
         return None
+
+    def source_texts_with(self, fact: Fact) -> list[str]:
+        """Тексты всех полей входа, где встречается этот факт."""
+        return [
+            text.lower()
+            for _, text, facts in self.sources
+            if any(self._same(fact, known) for known in facts)
+        ]
 
     def number_known(self, key: str) -> bool:
         return any(

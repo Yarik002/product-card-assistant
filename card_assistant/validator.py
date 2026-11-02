@@ -27,11 +27,17 @@ UNCONFIRMED_TOPICS = {
     "класс точности": r"класс\w*\s+точност",
     "диапазон измерения": r"диапазон\w*\s+измер",
     "тип корпуса": r"тип\w*\s+корпус",
+    # Самая частая выдумка без чисел: где прибор применяется и в каких условиях работает
+    "отрасли применения": r"отрасл|промышленност|нефтян|нефтегаз|химическ|энергетик|жкх|"
+    r"пищев|фармацевт|металлург|судостро",
+    "безопасность": r"безопасн",
+    "условия эксплуатации": r"вибрац|влажн|агрессивн|коррози|температур",
 }
 # Граница слова слева обязательна: «избыточного» содержит «точного»
 EVALUATIVE = (
     r"(?<![а-я])(?:самы[йхем]|сам(?:ая|ое|ые|ого|ому)\b|лучш|надеж|высокоточн|"
-    r"точн(?:ый|ая|ое|ые|ых|ого|ому|ым)\b|высок\w+\s+точност|обеспеч\w+\s+точност|"
+    r"точн(?:ый|ая|ое|ые|ых|ого|ому|ым)\b|точно\s+(?:опред|измер|показ|контрол)|"
+    r"высок\w+\s+точност|обеспеч\w+\s+точност|"
     r"долговечн|качественн|премиальн|уникальн|идеальн|безупречн|непревзойд|превосход|"
     r"исключительн|современн|эффективн|оптимальн|прочн|стабильн|передов|инновацион|"
     r"удобн|прост\w*\s+в\s+(?:использ|эксплуат|монтаж|обслуж))"
@@ -42,10 +48,19 @@ STOP_WORDS = {
     "этот", "этого", "этой", "эти", "этих", "также", "может", "могут", "который", "которые",
     "которая", "данный", "данная", "прибор", "прибора", "прибору", "приборы", "приборов",
     "используется", "применяется", "является", "имеет", "обладает", "значение", "значения",
-    "характеристики", "характеристик", "характеристика",
+    "характеристики", "характеристик", "характеристика", "покупатель", "покупателю",
+    "покупателям", "покупателя", "сравнить", "условия", "условиями", "задачи", "задача",
+    "подбор", "подборе", "подбора", "выбор", "выборе", "выбора", "следует", "необходимо", "нужно",
 }  # fmt: skip
 SENTENCE_MIN_BACKED = 0.4
 COMMERCIAL_MIN_BACKED = 0.5
+
+# Параметры, которые легко перепутать. Модель написала «диаметр капилляра 1 000 мм»
+# при входе «длина капилляра 1 000 мм»: число есть во входе, но приписано другому параметру
+PARAMETER_NOUNS = re.compile(
+    r"(?<![а-я])(диаметр|длин|ширин|высот|масс|толщин|глубин|мощност|напряжени)"
+)
+PLACEHOLDER_RE = re.compile(r"данных нет|нет данных|не указан|без специфическ")
 
 
 def backed_ratio(text: str, index: InputIndex) -> float:
@@ -161,21 +176,38 @@ def check_facts(
                 continue
             seen.add(ident)
             issue, located = _check_fact(fact, field_name, index, conflict_keys)
+            issue = issue or _check_binding(fact, normalized, field_name, index)
             if issue:
                 issues.append(issue)
             elif located:
                 _add_trace(traces, fact.raw, field_name, located)
         issues.extend(_check_names(normalized, field_name, index))
         issues.extend(_check_claims(normalized, field_name, index))
-        if "данных нет" in normalized.lower() or "нет данных" in normalized.lower():
+        if PLACEHOLDER_RE.search(normalized.lower()):
             issues.append(
                 Issue(
                     code="placeholder",
                     field=field_name,
-                    message="не пиши в тексте «данных нет», пробелы показывает сервис. Убери это.",
+                    message="не пиши о пробелах в данных, их показывает сервис. Убери это.",
                 )
             )
     return issues, traces
+
+
+def _check_binding(fact, text: str, field_name: str, index: InputIndex) -> Issue | None:
+    """Число должно относиться к тому же параметру, что и во входе."""
+    if fact.kind != "number":
+        return None
+    nearby = " ".join(text[: fact.pos].split()[-3:]).lower()
+    nouns = PARAMETER_NOUNS.findall(nearby)
+    if not nouns or any(nouns[-1] in source for source in index.source_texts_with(fact)):
+        return None
+    return Issue(
+        code="wrong_binding",
+        field=field_name,
+        value=fact.raw,
+        message=f"значение «{fact.raw}» во входе относится не к параметру «{nouns[-1]}». Исправь.",
+    )
 
 
 def _add_trace(traces: list[FactTrace], raw: str, field_name: str, located: Located) -> None:
@@ -266,12 +298,13 @@ def _check_claims(text: str, field_name: str, index: InputIndex) -> list[Issue]:
         word = _whole_word(lowered, match.start())
         # Сравниваем почти целое слово: «точное» не подтверждается «классом точности»
         if not re.search(rf"(?<![а-я]){word[:-2]}[а-я]{{0,3}}(?![а-я])", index.full_text):
+            phrase = match.group() if " " in match.group() else word
             issues.append(
                 Issue(
                     code="evaluative_claim",
                     field=field_name,
-                    value=word,
-                    message=f"оценка «{word}» ничем не подтверждена. Убери её.",
+                    value=phrase,
+                    message=f"оценка «{phrase}» ничем не подтверждена. Убери её.",
                 )
             )
     return issues
