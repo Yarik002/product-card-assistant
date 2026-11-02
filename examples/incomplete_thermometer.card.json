@@ -1,0 +1,132 @@
+{
+  "status": "needs_review",
+  "name": "Термометр биметаллический ТБ-1 (вымышленный прибор)",
+  "manufacturer": "",
+  "seo_title": "",
+  "seo_title_length": 0,
+  "seo_description": "",
+  "seo_description_length": 0,
+  "characteristics": [
+    {
+      "name": "диапазон измерения",
+      "value": "0–120 °С",
+      "source": "specs.диапазон измерения",
+      "status": "ok",
+      "note": ""
+    },
+    {
+      "name": "класс точности",
+      "value": "данных нет",
+      "source": "нет во входе",
+      "status": "missing",
+      "note": "Уточнить. Нет данных, это не значит, что поле неприменимо."
+    },
+    {
+      "name": "питание",
+      "value": "данных нет",
+      "source": "нет во входе",
+      "status": "missing",
+      "note": "Уточнить. Нет данных, это не значит, что поле неприменимо."
+    },
+    {
+      "name": "тип корпуса",
+      "value": "данных нет",
+      "source": "нет во входе",
+      "status": "missing",
+      "note": "Уточнить. Нет данных, это не значит, что поле неприменимо."
+    },
+    {
+      "name": "интерфейсы",
+      "value": "данных нет",
+      "source": "нет во входе",
+      "status": "missing",
+      "note": "Уточнить. Нет данных, это не значит, что поле неприменимо."
+    }
+  ],
+  "search_queries": [],
+  "search_queries_note": "Гипотезы модели. Частотность по Wordstat не проверялась.",
+  "commercial": {
+    "suitable_for": [],
+    "tasks": [],
+    "assumptions": []
+  },
+  "missing_fields": [
+    {
+      "field": "класс точности",
+      "reason": "нет во входных данных"
+    },
+    {
+      "field": "питание",
+      "reason": "нет во входных данных"
+    },
+    {
+      "field": "тип корпуса",
+      "reason": "нет во входных данных"
+    },
+    {
+      "field": "интерфейсы",
+      "reason": "нет во входных данных"
+    },
+    {
+      "field": "производитель",
+      "reason": "не указан"
+    },
+    {
+      "field": "описание",
+      "reason": "не указано"
+    }
+  ],
+  "warnings": [],
+  "issues": [
+    {
+      "code": "invalid_json",
+      "field": "ответ модели",
+      "message": "в JSON отсутствуют или неверны поля: search_queries, commercial.",
+      "value": ""
+    }
+  ],
+  "traces": [],
+  "unbacked_phrases": [],
+  "model": "qwen2.5:3b",
+  "attempts": [
+    {
+      "number": 1,
+      "issues": [
+        {
+          "code": "invalid_json",
+          "field": "ответ модели",
+          "message": "в JSON отсутствуют или неверны поля: search_queries, commercial.",
+          "value": ""
+        }
+      ],
+      "seconds": 7.3,
+      "total_tokens": 1130
+    },
+    {
+      "number": 2,
+      "issues": [
+        {
+          "code": "invalid_json",
+          "field": "ответ модели",
+          "message": "в JSON отсутствуют или неверны поля: search_queries, commercial.",
+          "value": ""
+        }
+      ],
+      "seconds": 4.5,
+      "total_tokens": 1423
+    },
+    {
+      "number": 3,
+      "issues": [
+        {
+          "code": "invalid_json",
+          "field": "ответ модели",
+          "message": "в JSON отсутствуют или неверны поля: search_queries, commercial.",
+          "value": ""
+        }
+      ],
+      "seconds": 3.8,
+      "total_tokens": 1423
+    }
+  ]
+}

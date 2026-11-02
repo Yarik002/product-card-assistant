@@ -2,6 +2,7 @@ from conftest import GOOD_SENTENCE, FakeClient, good_draft
 
 from card_assistant.llm import LLMError
 from card_assistant.pipeline import generate_card
+from card_assistant.prompts import SYSTEM_PROMPT
 from card_assistant.schemas import ProductInput
 
 
@@ -16,6 +17,11 @@ def test_good_answer_is_ready_at_first_attempt(manometer):
     assert card.status == "ready"
     assert len(client.calls) == 1
     assert card.seo_title_length == len(card.seo_title)
+
+
+def test_prompt_has_no_digits_to_copy():
+    # Маленькая модель копировала из промпта «2-3 предложения» и получала ложные ошибки
+    assert not any(ch.isdigit() for ch in SYSTEM_PROMPT)
 
 
 def test_input_is_passed_as_data_block(manometer):
@@ -88,6 +94,20 @@ def test_evaluative_word_is_caught(manometer):
     client = FakeClient(*[good_draft(seo_title="Самый надёжный манометр DM 02")] * 3)
     card = generate_card(manometer, client)
     assert "evaluative_claim" in codes(card)
+
+
+def test_word_containing_evaluative_part_is_not_flagged(manometer):
+    # «избыточного» содержит «точного», это не оценка
+    manometer.description = "Для жидких сред."
+    commercial = {"suitable_for": ["Для избыточного давления"], "tasks": ["Манометр"]}
+    client = FakeClient(*[good_draft(commercial={**commercial, "assumptions": []})] * 3)
+    assert "evaluative_claim" not in codes(generate_card(manometer, client))
+
+
+def test_accuracy_class_does_not_confirm_word_exact(manometer):
+    # «класс точности» во входе не разрешает писать «точное измерение»
+    client = FakeClient(*[good_draft(seo_title="Манометр DM 02, точное измерение")] * 3)
+    assert "evaluative_claim" in codes(generate_card(manometer, client))
 
 
 def test_invented_brand_and_standard_are_caught(manometer):
