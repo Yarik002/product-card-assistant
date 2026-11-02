@@ -13,6 +13,7 @@ import time
 from collections import Counter
 from datetime import date
 from pathlib import Path
+from statistics import median
 
 from card_assistant.config import ConfigError, load_settings
 from card_assistant.facts import normalize
@@ -121,7 +122,12 @@ def summarize(results: list[dict]) -> dict:
         caught.update(item.get("caught", {}))
         other.update(item.get("other_issues", {}))
     generated = [item for item in results if item.get("attempts")]
-    seconds = [item["seconds"] / item["attempts"] for item in generated]
+    # Медиана, а не среднее: одна попытка, во время которой ноутбук уснул, не должна влиять на итог
+    seconds = [
+        attempt["seconds"]
+        for item in generated
+        for attempt in item["card"]["attempts"]
+    ]
     return {
         "cases": len(results),
         "statuses": dict(statuses),
@@ -134,8 +140,8 @@ def summarize(results: list[dict]) -> dict:
         "leaks_in_final_text": sum(len(item["leaks"]) for item in results),
         "leaks_not_reported": sum(len(item.get("unreported_leaks", [])) for item in results),
         "final_cards_with_open_issues": sum(1 for item in results if item.get("final_issues")),
-        "seconds_per_attempt": round(sum(seconds) / len(seconds), 1) if seconds else 0,
-        "total_seconds": round(sum(item.get("seconds", 0) for item in results), 1),
+        "median_seconds_per_attempt": round(median(seconds), 1) if seconds else 0,
+        "total_attempts": len(seconds),
         "total_tokens": sum(item.get("tokens", 0) for item in results),
     }
 
@@ -158,8 +164,8 @@ def to_markdown(label: str, model: str, summary: dict, results: list[dict]) -> s
         f"| Прочие ошибки (длина, JSON и др.) | {summary['other_issues']} |",
         f"| Запрещённых строк в итоговых черновиках | {summary['leaks_in_final_text']} |",
         f"| Из них валидатор не сообщил | {summary['leaks_not_reported']} |",
-        f"| Секунд на попытку, в среднем | {summary['seconds_per_attempt']} |",
-        f"| Всего секунд | {summary['total_seconds']} |",
+        f"| Секунд на попытку, медиана | {summary['median_seconds_per_attempt']} |",
+        f"| Всего попыток | {summary['total_attempts']} |",
         f"| Всего токенов | {summary['total_tokens']} |",
         "",
         "| Случай | Статус | Попыток | Поймано | Открытых проблем | Утечки | Не выполнено |",

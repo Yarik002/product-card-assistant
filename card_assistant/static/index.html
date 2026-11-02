@@ -58,6 +58,7 @@
   th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line);
            vertical-align: top; overflow-wrap: anywhere; }
   th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .traces td:first-child, .traces th:first-child { white-space: nowrap; }
   tr.missing td:nth-child(2) { color: var(--bad); font-weight: 600; }
   tr.conflict td, tr.check td { background: var(--warn-bg); }
   .source { color: var(--muted); font-size: 13px; }
@@ -230,7 +231,7 @@ function renderCard(card, markdown) {
       commercial.assumptions.length ? el("strong", {}, "Предположения, проверьте сами") : null,
       commercial.assumptions.length ? list(commercial.assumptions, "assumption") : null));
 
-    nodes.push(el("section", { class: "block" }, el("details", { open: "" },
+    nodes.push(el("section", { class: "block traces" }, el("details", { open: "" },
       el("summary", {}, `Откуда взяты значения (${card.traces.length})`),
       table(["Значение", "Где в тексте", "Источник", "Фрагмент"], card.traces.map((t) =>
         el("tr", {}, el("td", {}, t.value), el("td", { class: "source" }, t.used_in),
@@ -238,7 +239,7 @@ function renderCard(card, markdown) {
   }
 
   const footer = el("section", { class: "block" });
-  const attempts = card.attempts.map((a) => `попытка ${a.number}: ${a.issues.length} проблем, ${a.seconds} с`);
+  const attempts = card.attempts.map((a) => `попытка ${a.number}: проблем ${a.issues.length}, ${a.seconds} с`);
   footer.append(
     el("div", { class: "block-head" },
       el("span", { class: "muted" }, [card.model, ...attempts].filter(Boolean).join("; ")),

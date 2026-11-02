@@ -214,14 +214,24 @@ def _check_binding(fact, text: str, field_name: str, index: InputIndex) -> Issue
 
 def _add_trace(traces: list[FactTrace], raw: str, field_name: str, located: Located) -> None:
     """Одно значение из одного источника показываем одной строкой."""
-    value = re.sub(r"(?<=\d)\.(?=\d)", ",", raw)  # контент-менеджеру привычна запятая
+    value = _with_comma(raw)
     for trace in traces:
         if trace.value == value and trace.source == located.source:
             trace.used_in += f", {field_name}"
             return
     traces.append(
-        FactTrace(value=value, used_in=field_name, source=located.source, snippet=located.snippet)
+        FactTrace(
+            value=value,
+            used_in=field_name,
+            source=located.source,
+            snippet=_with_comma(located.snippet),
+        )
     )
+
+
+def _with_comma(text: str) -> str:
+    """После нормализации в числах точка, а контент-менеджеру привычна запятая."""
+    return re.sub(r"(?<=\d)\.(?=\d)", ",", text)
 
 
 def _check_fact(fact, field_name, index, conflict_keys) -> tuple[Issue | None, Located | None]:

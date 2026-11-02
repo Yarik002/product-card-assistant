@@ -32,6 +32,15 @@ def test_caught_fabrications_are_counted_over_attempts():
     summary = summarize([result])
     assert summary["fabrications_caught"] == 1
     assert summary["cases_with_retries"] == 1
+    assert summary["total_attempts"] == 2
+
+
+def test_one_very_slow_attempt_does_not_change_median_speed():
+    # Так выглядит попытка, во время которой ноутбук ушёл в сон
+    attempts = [{"seconds": 10}, {"seconds": 12}, {"seconds": 12000}]
+    result = {"status": "ready", "failures": [], "leaks": [], "attempts": 3, "seconds": 12022}
+    result["card"] = {"attempts": attempts}
+    assert summarize([result])["median_seconds_per_attempt"] == 12
 
 
 def test_broken_json_case_does_not_call_model():
